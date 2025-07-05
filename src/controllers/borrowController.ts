@@ -2,31 +2,31 @@ import { Request, Response } from "express";
 import Borrow from "../models/borrow.model";
 import Book from "../models/book.model";
 
-// POST /api/borrow - borrow a book
-export const borrowBook = async (req: Request, res: Response) => {
+export const borrowBook = async (req: Request, res: Response): Promise<void> => {
   try {
     const { bookId, quantity, dueDate } = req.body;
 
     if (!bookId || !quantity || !dueDate) {
-      return res.status(400).json({ message: "Missing required fields." });
+      res.status(400).json({ message: "Missing required fields." });
+      return;
     }
 
     if (quantity <= 0) {
-      return res.status(400).json({ message: "Quantity must be greater than 0." });
+      res.status(400).json({ message: "Quantity must be greater than 0." });
+      return;
     }
 
-    // Find book
     const book = await Book.findById(bookId);
     if (!book) {
-      return res.status(404).json({ message: "Book not found." });
+      res.status(404).json({ message: "Book not found." });
+      return;
     }
 
-    // Check available copies
     if (book.copies < quantity) {
-      return res.status(400).json({ message: "Not enough copies available." });
+      res.status(400).json({ message: "Not enough copies available." });
+      return;
     }
 
-    // Create borrow record
     const borrow = new Borrow({
       book: bookId,
       quantity,
@@ -35,9 +35,8 @@ export const borrowBook = async (req: Request, res: Response) => {
 
     await borrow.save();
 
-    // Update book copies and availability
     book.copies -= quantity;
-    if (book.copies === 0) {
+    if (book.copies <= 0) {
       book.available = false;
     }
     await book.save();
@@ -49,8 +48,7 @@ export const borrowBook = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/borrow/summary - get borrow aggregation summary
-export const getBorrowSummary = async (req: Request, res: Response) => {
+export const getBorrowSummary = async (req: Request, res: Response): Promise<void> => {
   try {
     const summary = await Borrow.aggregate([
       {
